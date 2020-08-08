@@ -1,0 +1,6 @@
+version: "3.7"
+
+twitter_auto_API:
+  build: api
+  env_file:
+    - ./Env-file.env
