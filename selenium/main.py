@@ -69,7 +69,7 @@ class Database:
     
     def gettweet(self,member):
         db = self.db
-        db.execute("SELECT PermanentURL FROM Vtuber.VtuberData inner join VtuberMember on VtuberMember.id = VtuberData.VtuberMember_id where VtuberMember.VtuberName_EN= %s ",(member,))
+        db.execute("SELECT PermanentURL FROM Vtuber.Twitter inner join VtuberMember on VtuberMember.id = VtuberData.VtuberMember_id where VtuberMember.VtuberName_EN= %s ",(member,))
         res = dbconn.fetchall()
         tweetID = []
         for i in res:
