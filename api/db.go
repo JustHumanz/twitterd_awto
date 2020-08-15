@@ -54,7 +54,7 @@ func GetGroup() []GroupName {
 }
 
 func GetTweetID(limit int64, GroupID int64) []int64 {
-	rows, err := db.Query(`SELECT TweetID FROM Vtuber.Twitter inner join VtuberMember on VtuberMember.id = VtuberData.VtuberMember_id inner join VtuberGroup on VtuberMember.VtuberGroup_id = VtuberGroup.id where VtuberGroup.id=? order by VtuberData.id DESC limit ?`, GroupID, limit)
+	rows, err := db.Query(`SELECT TweetID FROM Vtuber.Twitter inner join VtuberMember on VtuberMember.id = Vtuber.VtuberMember_id inner join VtuberGroup on VtuberMember.VtuberGroup_id = VtuberGroup.id where VtuberGroup.id=? order by Twitter.id DESC limit ?`, GroupID, limit)
 	if err != nil {
 		log.Error(err)
 	}
