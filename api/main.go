@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -17,9 +18,9 @@ import (
 )
 
 var (
-	client    *twitter.Client
-	TweetOld  []int64
-	GroupName []string
+	client *twitter.Client
+	Data   TwitterD
+	Auth   string
 )
 
 type configStruct struct {
@@ -42,7 +43,6 @@ func init() {
 	fmt.Println(string(file))
 
 	err = json.Unmarshal(file, &TokenConfig)
-
 	if err != nil {
 		log.Error(err)
 	}
@@ -55,82 +55,104 @@ func init() {
 
 func main() {
 	log.Info("Start bot")
-	GroupName = []string{"hanayori", "nijisanji", "hololive"}
-	for i := 0; i < len(GroupName); i++ {
-		var Data TwitterD
-
-		log.Info("Start Curl " + GroupName[i])
-		body, err, _ := Curl("https://api.justhumanz.me/BotAPI/" + GroupName[i] + "/twitter")
-		if err != nil {
-			log.Error(err)
-		}
-		err = json.Unmarshal(body, &Data)
-		if err != nil {
-			log.Error(err)
-		}
-		for j := 0; j < len(Data); j++ {
-			tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
-			if err != nil {
-				log.Error(err)
-			}
-			TweetOld = append(TweetOld, tmp)
-		}
+	Auth = os.Getenv("AUTH")
+	if Auth == "" {
+		log.Error("Auth not found")
+		os.Exit(1)
 	}
-	CheckTweet()
-
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	c := cron.New()
-	c.AddFunc("@every 0h1m40s", CheckTweet)
+	c.AddFunc("@every 0h1m40s", CheckTweetHanayori)
+	c.AddFunc("@every 0h1m40s", CheckTweetNijisanji)
+	c.AddFunc("@every 0h1m40s", CheckTweetHololive)
 	c.Start()
 	wg.Wait()
 }
 
-func CheckTweet() {
-	log.Info("Start Cron")
-	var TweetNew []int64
-	for i := 0; i < len(GroupName); i++ {
-		var Data TwitterD
-		body, err, _ := Curl("https://api.justhumanz.me/BotAPI/" + GroupName[i] + "/twitter")
-		if err != nil {
-			log.Error(err)
-		}
-		err = json.Unmarshal(body, &Data)
-		if err != nil {
-			log.Error(err)
-		}
-		for j := 0; j < len(Data); j++ {
-			tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
-			if err != nil {
-				log.Error(err)
-			}
-			TweetNew = append(TweetNew, tmp)
-		}
-
+func CheckTweetHanayori() {
+	log.Info("Start Curl Hanayori")
+	body, err, _ := Curl("https://api.justhumanz.me/BotAPI/hanayori/twitter")
+	if err != nil {
+		log.Error(err)
 	}
-	log.Info("Len : ", len(TweetNew))
-
-	for i := 0; i < len(TweetNew); i++ {
-		if TweetNew[i] != TweetOld[i] {
-			log.WithFields(log.Fields{
-				"TweetID": TweetNew[i],
-			}).Info("New Post")
-			err := Like(TweetNew[i])
-			if err != nil {
-				log.Error(err)
-			} else {
-				err = Retweet(TweetNew[i])
-				if err != nil {
-					log.Error(err)
-				}
-			}
+	err = json.Unmarshal(body, &Data)
+	if err != nil {
+		log.Error(err)
+	}
+	for j := 0; j < len(Data); j++ {
+		tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
+		if err != nil {
+			log.Error(err)
+		}
+		err = Like(tmp)
+		if err != nil {
+			log.Error(err)
+			break
 		} else {
-			log.WithFields(log.Fields{
-				"TweetID": TweetNew[i],
-			}).Info("Still same")
+			err = Retweet(tmp)
+			if err != nil {
+				log.Error(err)
+			}
 		}
 	}
-	TweetOld = TweetNew
+
+}
+
+func CheckTweetNijisanji() {
+	log.Info("Start Curl Nijisanji")
+	body, err, _ := Curl("https://api.justhumanz.me/BotAPI/nijisanji/twitter")
+	if err != nil {
+		log.Error(err)
+	}
+	err = json.Unmarshal(body, &Data)
+	if err != nil {
+		log.Error(err)
+	}
+	for j := 0; j < len(Data); j++ {
+		tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
+		if err != nil {
+			log.Error(err)
+		}
+		err = Like(tmp)
+		if err != nil {
+			log.Error(err)
+			break
+		} else {
+			err = Retweet(tmp)
+			if err != nil {
+				log.Error(err)
+			}
+		}
+	}
+}
+
+func CheckTweetHololive() {
+	log.Info("Start Curl Hololive")
+	body, err, _ := Curl("https://api.justhumanz.me/BotAPI/hololive/twitter")
+	if err != nil {
+		log.Error(err)
+	}
+	err = json.Unmarshal(body, &Data)
+	if err != nil {
+		log.Error(err)
+	}
+	for j := 0; j < len(Data); j++ {
+		tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
+		if err != nil {
+			log.Error(err)
+		}
+		err = Like(tmp)
+		if err != nil {
+			log.Error(err)
+			break
+		} else {
+			err = Retweet(tmp)
+			if err != nil {
+				log.Error(err)
+			}
+		}
+	}
 }
 
 func Like(twID int64) error {
@@ -138,12 +160,8 @@ func Like(twID int64) error {
 	_, _, err := client.Favorites.Create(params)
 	if err != nil {
 		return err
-	} else {
-		err := Retweet(twID)
-		if err != nil {
-			log.Error(err)
-		}
 	}
+	log.Info("TweetID ", twID, " was liked")
 	return nil
 }
 
@@ -152,6 +170,7 @@ func Retweet(twID int64) error {
 	if err != nil {
 		return err
 	}
+	log.Info("TweetID ", twID, " was retweetd")
 	return nil
 }
 
@@ -165,7 +184,7 @@ func Curl(url string) ([]byte, error, int) {
 		return []byte{}, err, 0
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Nokia 3310) AppleWebKit/601.2 (KHTML, like Gecko)")
-	req.Header.Set("Authorization", "Basic a2FubzprYW5vMjUyNQ==")
+	req.Header.Set("Authorization", "Basic "+Auth)
 	res, getErr := spaceClient.Do(req)
 	if getErr != nil {
 		log.Error(getErr)
