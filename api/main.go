@@ -1,11 +1,11 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
+	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -17,9 +17,9 @@ import (
 )
 
 var (
-	client   *twitter.Client
-	db       *sql.DB
-	TweetOld []int64
+	client    *twitter.Client
+	TweetOld  []int64
+	GroupName []string
 )
 
 type configStruct struct {
@@ -32,14 +32,6 @@ type configStruct struct {
 func init() {
 	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
 	var TokenConfig configStruct
-	user := os.Getenv("SQLUSER")
-	pass := os.Getenv("SQLPASS")
-	host := os.Getenv("DBHOST")
-
-	if user == "" || pass == "" || host == "" {
-		log.Error("user,pass or host not found")
-		os.Exit(1)
-	}
 
 	file, err := ioutil.ReadFile("./token.json")
 
@@ -59,18 +51,33 @@ func init() {
 	token := oauth1.NewToken(TokenConfig.AccessToken, TokenConfig.AccessSecret)
 	httpClient := config.Client(oauth1.NoContext, token)
 	client = twitter.NewClient(httpClient)
-	db = Conn()
 }
 
 func main() {
-	Group := GetGroup()
-	for i := 0; i < len(Group); i++ {
-		log.Info("Get old Data ", Group[i].VtuberGroup)
-		tmp := GetTweetID(30, Group[i].ID)
-		for j := 0; j < len(tmp); j++ {
-			TweetOld = append(TweetOld, tmp[j])
+	log.Info("Start bot")
+	GroupName = []string{"hanayori", "nijisanji", "hololive"}
+	for i := 0; i < len(GroupName); i++ {
+		var Data TwitterD
+
+		log.Info("Start Curl " + GroupName[i])
+		body, err, _ := Curl("https://api.justhumanz.me/BotAPI/" + GroupName[i] + "/twitter")
+		if err != nil {
+			log.Error(err)
+		}
+		err = json.Unmarshal(body, &Data)
+		if err != nil {
+			log.Error(err)
+		}
+		for j := 0; j < len(Data); j++ {
+			tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
+			if err != nil {
+				log.Error(err)
+			}
+			TweetOld = append(TweetOld, tmp)
 		}
 	}
+	CheckTweet()
+
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	c := cron.New()
@@ -80,31 +87,50 @@ func main() {
 }
 
 func CheckTweet() {
+	log.Info("Start Cron")
 	var TweetNew []int64
-	Group := GetGroup()
-	for i := 0; i < len(Group); i++ {
-		log.Info("Check new Data ", Group[i].VtuberGroup)
-		tmp := GetTweetID(30, Group[i].ID)
-		for j := 0; j < len(tmp); j++ {
-			TweetNew = append(TweetNew, tmp[j])
+	for i := 0; i < len(GroupName); i++ {
+		var Data TwitterD
+		body, err, _ := Curl("https://api.justhumanz.me/BotAPI/" + GroupName[i] + "/twitter")
+		if err != nil {
+			log.Error(err)
 		}
-	}
-	for k := 0; k < len(TweetNew); k++ {
-		if TweetNew[k] != TweetOld[k] {
-			log.Info("New Tweet ", TweetNew[k])
-			err := Like(TweetNew[k])
+		err = json.Unmarshal(body, &Data)
+		if err != nil {
+			log.Error(err)
+		}
+		for j := 0; j < len(Data); j++ {
+			tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
 			if err != nil {
 				log.Error(err)
-				log.Info("Skip...")
+			}
+			TweetNew = append(TweetNew, tmp)
+		}
+
+	}
+	log.Info("Len : ", len(TweetNew))
+
+	for i := 0; i < len(TweetNew); i++ {
+		if TweetNew[i] != TweetOld[i] {
+			log.WithFields(log.Fields{
+				"TweetID": TweetNew[i],
+			}).Info("New Post")
+			err := Like(TweetNew[i])
+			if err != nil {
+				log.Error(err)
 			} else {
-				log.Info("Done ", TweetNew[k])
-				TweetOld = TweetNew
+				err = Retweet(TweetNew[i])
+				if err != nil {
+					log.Error(err)
+				}
 			}
 		} else {
-			log.Info("Still same")
+			log.WithFields(log.Fields{
+				"TweetID": TweetNew[i],
+			}).Info("Still same")
 		}
-		time.Sleep(500 * time.Millisecond)
 	}
+	TweetOld = TweetNew
 }
 
 func Like(twID int64) error {
@@ -127,4 +153,45 @@ func Retweet(twID int64) error {
 		return err
 	}
 	return nil
+}
+
+func Curl(url string) ([]byte, error, int) {
+	spaceClient := http.Client{
+		Timeout: time.Second * 20, // Timeout after 20 seconds
+	}
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		log.Error(err)
+		return []byte{}, err, 0
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Nokia 3310) AppleWebKit/601.2 (KHTML, like Gecko)")
+	req.Header.Set("Authorization", "Basic a2FubzprYW5vMjUyNQ==")
+	res, getErr := spaceClient.Do(req)
+	if getErr != nil {
+		log.Error(getErr)
+		return []byte{}, err, res.StatusCode
+	}
+	if res.Body != nil {
+		defer res.Body.Close()
+	}
+	body, readErr := ioutil.ReadAll(res.Body)
+	if readErr != nil {
+		log.Error(readErr)
+
+	}
+	return body, nil, res.StatusCode
+}
+
+type TwitterD []struct {
+	VtuberName      string   `json:"VtuberName"`
+	VtuberNameEN    string   `json:"VtuberName_EN"`
+	VtuberNameJP    string   `json:"VtuberName_JP"`
+	VtuberGroupName string   `json:"VtuberGroupName"`
+	PermanentURL    string   `json:"PermanentURL"`
+	Author          string   `json:"Author"`
+	Likes           int      `json:"Likes"`
+	Photos          []string `json:"Photos"`
+	Videos          string   `json:"Videos"`
+	Text            string   `json:"Text"`
+	TweetID         string   `json:"TweetID"`
 }
