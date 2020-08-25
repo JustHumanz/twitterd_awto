@@ -21,6 +21,9 @@ var (
 	client *twitter.Client
 	Data   TwitterD
 	Auth   string
+	Hana   string
+	Holo   string
+	Niji   string
 )
 
 type configStruct struct {
@@ -63,8 +66,8 @@ func main() {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	c := cron.New()
-	c.AddFunc("@every 0h1m40s", CheckTweetHanayori)
-	c.AddFunc("@every 0h1m40s", CheckTweetNijisanji)
+	c.AddFunc("@every 0h1m20s", CheckTweetHanayori)
+	c.AddFunc("@every 0h1m30s", CheckTweetNijisanji)
 	c.AddFunc("@every 0h1m40s", CheckTweetHololive)
 	c.Start()
 	wg.Wait()
@@ -80,22 +83,30 @@ func CheckTweetHanayori() {
 	if err != nil {
 		log.Error(err)
 	}
-	for j := 0; j < len(Data); j++ {
-		tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
-		if err != nil {
-			log.Error(err)
-		}
-		err = Like(tmp)
-		if err != nil {
-			log.Error(err)
-			break
-		} else {
-			err = Retweet(tmp)
+	if Hana != Data[0].PermanentURL {
+		for j := 0; j < 10; j++ {
+			tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
 			if err != nil {
 				log.Error(err)
 			}
+
+			err = Like(tmp)
+			if err != nil {
+				log.Error(err)
+				break
+			} else {
+				err = Retweet(tmp)
+				if err != nil {
+					log.Error(err)
+				}
+			}
+
 		}
+
+	} else {
+		log.Info("Hanayori", " Still same")
 	}
+	Hana = Data[0].PermanentURL
 
 }
 
@@ -109,22 +120,29 @@ func CheckTweetNijisanji() {
 	if err != nil {
 		log.Error(err)
 	}
-	for j := 0; j < len(Data); j++ {
-		tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
-		if err != nil {
-			log.Error(err)
-		}
-		err = Like(tmp)
-		if err != nil {
-			log.Error(err)
-			break
-		} else {
-			err = Retweet(tmp)
+	if Niji != Data[0].PermanentURL {
+		for j := 0; j < 10; j++ {
+			tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
 			if err != nil {
 				log.Error(err)
 			}
+
+			err = Like(tmp)
+			if err != nil {
+				log.Error(err)
+				break
+			} else {
+				err = Retweet(tmp)
+				if err != nil {
+					log.Error(err)
+				}
+			}
+
 		}
+	} else {
+		log.Info("Nijisanji", " Still same")
 	}
+	Niji = Data[0].PermanentURL
 }
 
 func CheckTweetHololive() {
@@ -137,22 +155,29 @@ func CheckTweetHololive() {
 	if err != nil {
 		log.Error(err)
 	}
-	for j := 0; j < len(Data); j++ {
-		tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
-		if err != nil {
-			log.Error(err)
-		}
-		err = Like(tmp)
-		if err != nil {
-			log.Error(err)
-			break
-		} else {
-			err = Retweet(tmp)
+	if Holo != Data[0].PermanentURL {
+		for j := 0; j < 10; j++ {
+			tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
 			if err != nil {
 				log.Error(err)
 			}
+
+			err = Like(tmp)
+			if err != nil {
+				log.Error(err)
+				break
+			} else {
+				err = Retweet(tmp)
+				if err != nil {
+					log.Error(err)
+				}
+			}
+
 		}
+	} else {
+		log.Info("Hololive", " Still same")
 	}
+	Holo = Data[0].PermanentURL
 }
 
 func Like(twID int64) error {
