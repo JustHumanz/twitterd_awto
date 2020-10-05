@@ -4,4 +4,6 @@ services:
   twitter_auto_api:
     build: api
     env_file:
-      - ./Env-file.env
+      - ./Env.env
+    extra_hosts:
+    - "api.human-z.tech:172.17.0.1"

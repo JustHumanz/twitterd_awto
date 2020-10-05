@@ -75,7 +75,7 @@ func main() {
 
 func CheckTweetHanayori() {
 	log.Info("Start Curl Hanayori")
-	body, err, _ := Curl("https://api.justhumanz.me/BotAPI/hanayori/twitter")
+	body, err, _ := Curl("https://api.human-z.tech/vtbot/hanayori/twitter")
 	if err != nil {
 		log.Error(err)
 	}
@@ -112,7 +112,7 @@ func CheckTweetHanayori() {
 
 func CheckTweetNijisanji() {
 	log.Info("Start Curl Nijisanji")
-	body, err, _ := Curl("https://api.justhumanz.me/BotAPI/nijisanji/twitter")
+	body, err, _ := Curl("https://api.human-z.tech/vtbot/nijisanji/twitter")
 	if err != nil {
 		log.Error(err)
 	}
@@ -147,7 +147,7 @@ func CheckTweetNijisanji() {
 
 func CheckTweetHololive() {
 	log.Info("Start Curl Hololive")
-	body, err, _ := Curl("https://api.justhumanz.me/BotAPI/hololive/twitter")
+	body, err, _ := Curl("https://api.human-z.tech/vtbot/hololive/twitter")
 	if err != nil {
 		log.Error(err)
 	}
