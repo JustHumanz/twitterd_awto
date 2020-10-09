@@ -63,121 +63,128 @@ func main() {
 		log.Error("Auth not found")
 		os.Exit(1)
 	}
+	StartCheck()
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	c := cron.New()
-	c.AddFunc("@every 0h1m20s", CheckTweetHanayori)
-	c.AddFunc("@every 0h1m30s", CheckTweetNijisanji)
-	c.AddFunc("@every 0h1m40s", CheckTweetHololive)
+	c.AddFunc("@every 0h1m20s", StartCheck)
 	c.Start()
 	wg.Wait()
 }
 
-func CheckTweetHanayori() {
-	log.Info("Start Curl Hanayori")
-	body, err, _ := Curl("https://api.human-z.tech/vtbot/hanayori/twitter")
-	if err != nil {
-		log.Error(err)
-	}
-	err = json.Unmarshal(body, &Data)
-	if err != nil {
-		log.Error(err)
-	}
-	if Hana != Data[0].PermanentURL {
-		for j := 0; j < 10; j++ {
-			tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
-			if err != nil {
-				log.Error(err)
-			}
-
-			err = Like(tmp)
-			if err != nil {
-				log.Error(err)
-				break
-			} else {
-				err = Retweet(tmp)
+func StartCheck() {
+	wg := &sync.WaitGroup{}
+	wg.Add(3)
+	go func(wg *sync.WaitGroup) {
+		log.Info("Start Curl Hanayori")
+		body, err, _ := Curl("https://api.human-z.tech/vtbot/twitter/hanayori")
+		if err != nil {
+			log.Error(err)
+		}
+		err = json.Unmarshal(body, &Data)
+		if err != nil {
+			log.Error(err)
+		}
+		if Hana != Data[0].PermanentURL {
+			for j := 0; j < 10; j++ {
+				tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
 				if err != nil {
 					log.Error(err)
 				}
+
+				err = Like(tmp)
+				if err != nil {
+					log.Error(err)
+					break
+				} else {
+					err = Retweet(tmp)
+					if err != nil {
+						log.Error(err)
+					}
+				}
+
 			}
 
+		} else {
+			log.Info("Hanayori", " Still same")
 		}
+		Hana = Data[0].PermanentURL
+		defer wg.Done()
+	}(wg)
 
-	} else {
-		log.Info("Hanayori", " Still same")
-	}
-	Hana = Data[0].PermanentURL
-
-}
-
-func CheckTweetNijisanji() {
-	log.Info("Start Curl Nijisanji")
-	body, err, _ := Curl("https://api.human-z.tech/vtbot/nijisanji/twitter")
-	if err != nil {
-		log.Error(err)
-	}
-	err = json.Unmarshal(body, &Data)
-	if err != nil {
-		log.Error(err)
-	}
-	if Niji != Data[0].PermanentURL {
-		for j := 0; j < 10; j++ {
-			tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
-			if err != nil {
-				log.Error(err)
-			}
-
-			err = Like(tmp)
-			if err != nil {
-				log.Error(err)
-				break
-			} else {
-				err = Retweet(tmp)
+	go func(wg *sync.WaitGroup) {
+		log.Info("Start Curl Nijisanji")
+		body, err, _ := Curl("https://api.human-z.tech/vtbot/twitter/nijisanji")
+		if err != nil {
+			log.Error(err)
+		}
+		err = json.Unmarshal(body, &Data)
+		if err != nil {
+			log.Error(err)
+		}
+		if Niji != Data[0].PermanentURL {
+			for j := 0; j < 10; j++ {
+				tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
 				if err != nil {
 					log.Error(err)
 				}
-			}
 
+				err = Like(tmp)
+				if err != nil {
+					log.Error(err)
+					break
+				} else {
+					err = Retweet(tmp)
+					if err != nil {
+						log.Error(err)
+					}
+				}
+
+			}
+		} else {
+			log.Info("Nijisanji", " Still same")
 		}
-	} else {
-		log.Info("Nijisanji", " Still same")
-	}
-	Niji = Data[0].PermanentURL
-}
+		Niji = Data[0].PermanentURL
+		defer wg.Done()
+	}(wg)
 
-func CheckTweetHololive() {
-	log.Info("Start Curl Hololive")
-	body, err, _ := Curl("https://api.human-z.tech/vtbot/hololive/twitter")
-	if err != nil {
-		log.Error(err)
-	}
-	err = json.Unmarshal(body, &Data)
-	if err != nil {
-		log.Error(err)
-	}
-	if Holo != Data[0].PermanentURL {
-		for j := 0; j < 10; j++ {
-			tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
-			if err != nil {
-				log.Error(err)
-			}
-
-			err = Like(tmp)
-			if err != nil {
-				log.Error(err)
-				break
-			} else {
-				err = Retweet(tmp)
+	go func(wg *sync.WaitGroup) {
+		log.Info("Start Curl Hololive")
+		body, err, _ := Curl("https://api.human-z.tech/vtbot/twitter/hololive")
+		if err != nil {
+			log.Error(err)
+		}
+		err = json.Unmarshal(body, &Data)
+		if err != nil {
+			log.Error(err)
+		}
+		if Holo != Data[0].PermanentURL {
+			for j := 0; j < 10; j++ {
+				tmp, err := strconv.ParseInt(Data[j].TweetID, 10, 64)
 				if err != nil {
 					log.Error(err)
 				}
-			}
 
+				err = Like(tmp)
+				if err != nil {
+					log.Error(err)
+					break
+				} else {
+					err = Retweet(tmp)
+					if err != nil {
+						log.Error(err)
+					}
+				}
+
+			}
+		} else {
+			log.Info("Hololive", " Still same")
 		}
-	} else {
-		log.Info("Hololive", " Still same")
-	}
-	Holo = Data[0].PermanentURL
+		Holo = Data[0].PermanentURL
+		defer wg.Done()
+	}(wg)
+
+	wg.Wait()
 }
 
 func Like(twID int64) error {
